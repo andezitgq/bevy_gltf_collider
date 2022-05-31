@@ -7,11 +7,11 @@
 	* GltfExtras
 
 * Child
-	* Handle<Mesh>
+	* Handle\<Mesh\>
 	
 To add a collider to a Mesh of the scene, it must have extras `collider = true`
 
-`The whole code is licensed under Apache 2.0 license`
+**The whole code is licensed under Apache 2.0 license**
 
 ## Dependencies
 
