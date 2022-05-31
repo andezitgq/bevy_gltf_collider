@@ -1,13 +1,13 @@
 use bevy::prelude::*;
-use bevy::gltf::{Gltf, GltfNode, GltfMesh};
+use bevy::gltf::{Gltf, GltfNode, GltfMesh, GltfExtras};
 use bevy_rapier3d::prelude::*;
+use serde_json::Value;
 
 #[derive(Default)]
-struct GltfMeshes {
-	gltf: Handle<Gltf>,
-	has_col: bool,
-	sensor: bool,
-}
+struct GltfMeshes(Handle<Gltf>);
+
+#[derive(Default)]
+struct LoadedMeshes(Vec<Handle<Mesh>>);
 
 fn main() {
 	App::new()
@@ -26,6 +26,7 @@ fn main() {
         .add_plugin(RapierDebugRenderPlugin::default())
         
         .add_system(process_gltf)
+        .add_system(control_extras)
         .add_startup_system(setup)
 
 		.run();
@@ -36,11 +37,7 @@ fn setup(
     assets: Res<AssetServer>,
 ) {    
     let gltf: Handle<Gltf> = assets.load("scenes/scene1.glb");	//load gltf scene
-    commands.insert_resource(GltfMeshes {						//create resource from the scene
-		gltf,
-		has_col: true,											//permits mesh collider processing
-		sensor: false,											//whether the collider is sensor
-	});
+    commands.insert_resource(GltfMeshes(gltf));
     
      commands.spawn_bundle(PointLightBundle {					//make some point light
         point_light: PointLight {
@@ -65,78 +62,80 @@ fn process_gltf(
     assets_gltf: Res<Assets<Gltf>>,
     assets_gltfmesh: Res<Assets<GltfMesh>>,
     assets_gltfnode: Res<Assets<GltfNode>>,
-    assets_mesh: Res<Assets<Mesh>>,
 ){	
-	for ev in er_gltf.iter() {										//read asset events
-		if let AssetEvent::Created { handle } = ev {				//process gltf when the scene is loaded
-			let scene = assets_gltf.get(handle).unwrap();
+	for ev in er_gltf.iter() {											//iterate event reader
+		if let AssetEvent::Created { handle } = ev {					//if asset created
+			let scene = assets_gltf.get(handle).unwrap();				//get scene
+			let mut meshes: Vec<Handle<Mesh>> = Vec::new();				//make temporary `Vec` with mesh `Handles`
 			
-			if *handle == cmeshes.gltf { 							//check whether loaded scene is valid
-				commands.spawn_scene(scene.scenes[0].clone());
-				if cmeshes.has_col == true {						//check whether collider processing is permitted
-					for gltfnode in scene.nodes.iter() {
-						let gltfnode = assets_gltfnode.get(gltfnode);
-						if let Some(gltfnode) = gltfnode {
-							let colliders: Vec<(Collider, Transform)> = create_node_colliders(
-																&gltfnode,
-																&assets_gltf,
-																&assets_gltfmesh,
-																&assets_gltfnode,
-																&assets_mesh,
-															);		//create colliders from GltfMeshes with `create_node_colliders`
-							
-							let mut i = 0;
-							while i < colliders.len() {				
-								commands.spawn()
-								.insert(colliders[i].0.clone())		//insert collider
-								.insert(colliders[i].1.clone())		//insert GltfNode transform with scale
-								.insert(Sensor(cmeshes.sensor));	//insert sensor
-								i += 1;
-							}
-						}
-						
+			if *handle == cmeshes.0 {									//check whether loaded scene matches created asset
+				commands.spawn_scene(scene.scenes[0].clone());			//spawn scene
+				for gltfnode in scene.nodes.iter() {					//iterate nodes
+					let gltfnode = assets_gltfnode.get(gltfnode);
+					if let Some(gltfnode) = gltfnode {
+						let mut x: Vec<Handle<Mesh>> = mesh_event(&gltfnode, &assets_gltf, &assets_gltfmesh);
+						meshes.append(&mut x);							//loaded meshes to the `Vec`
 					}
-				}
+					
+				}					
 			}
+			
+			commands.insert_resource(LoadedMeshes(meshes));				//insert loaded meshes as `Resource`
 		}
-	}
+	}			
 }
 
-fn create_node_colliders(
+fn mesh_event(
 	gltfnode: 			&GltfNode,
 	assets_gltf: 		&Res<Assets<Gltf>>,
     assets_gltfmesh: 	&Res<Assets<GltfMesh>>,
-    assets_gltfnode: 	&Res<Assets<GltfNode>>,
-    assets_mesh: 		&Res<Assets<Mesh>>,
+) -> Vec<Handle<Mesh>> {
+	let mut ms: Vec<Handle<Mesh>> = Vec::new();				//create temporary `Vec` of `Handles`
 	
-) -> Vec<(Collider, Transform)> {
-	
-	let mut cols: Vec<(Collider, Transform)> = Vec::new();			//create new vector
-	
-	if let Some(gltfmesh) = &gltfnode.mesh {						//getting all meshes from nodes
+	if let Some(gltfmesh) = &gltfnode.mesh {				//... get meshes from a given node
 		let gltfmesh = assets_gltfmesh.get(gltfmesh);
 		if let Some(gltfmesh) = gltfmesh {
 			for primitive in gltfmesh.primitives.iter() {
-				let mesh = assets_mesh.get(primitive.mesh.clone());
-				if let Some(mesh) = mesh {
-					if let Some(collider) = Collider::bevy_mesh(&mesh) { //make `bevy_mesh` colliders
-						cols.push((collider, gltfnode.transform));	//push colliders and transforms to Vec `cols`
-					}
-				}
+				let mesh = primitive.mesh.clone();
+				ms.push(mesh);								//push mesh to the `Vec`
 			}
 		}
 	}
 	
-	for children_node in gltfnode.children.iter() {					//recursive children-node processing
-		let mut child_cols: Vec<(Collider, Transform)> = create_node_colliders(
-														children_node,
-														assets_gltf,
-														assets_gltfmesh,
-														assets_gltfnode,
-														assets_mesh,
-													);
-		cols.append(&mut child_cols);
+	for children_node in gltfnode.children.iter() {			//recursive function call for children nodes
+		ms.append(&mut mesh_event(children_node, assets_gltf, assets_gltfmesh))
 	}
 	
-	return cols;
+	return ms;												//return a vector
+}
+
+fn control_extras(
+    mut commands: Commands,
+    mut assets_mesh: ResMut<Assets<Mesh>>,
+    q_parent: Query<(Entity, &Transform, &GltfExtras), Added<GltfExtras>>,
+    q_child: Query<(&Parent, Entity, &Handle<Mesh>), Added<Handle<Mesh>>>,
+    loaded_meshes: Option<Res<LoadedMeshes>>,
+){	
+	if let Some(loaded_meshes) = loaded_meshes {									//whether `LoadedMeshes` is valid
+		for (parent, ent, mesh) in q_child.iter() {									//iterate an entity
+			for loaded_mesh in loaded_meshes.0.iter() {								//iterate loaded meshes
+				if loaded_mesh == mesh {											//check if meshes of `LoadedMeshes` and `Entity` are equal
+					if let Some(mesh) = assets_mesh.get(mesh) {						//get `Mesh` from `Handle`
+						if let Some(collider) = Collider::bevy_mesh(mesh) {			//make `Collider` for `Mesh`
+							for (exent, _t, gltf_extras) in q_parent.iter() {		//iterate "parent object" with `GltfExtras`
+								if exent == parent.0 {								//check if parents matches
+									let v: Value = serde_json::from_str(&gltf_extras.value).expect("Couldn't parse GltfExtra value as JSON");
+									if v["collider"].as_str() == Some("true") {		//check whether property "collider" is true
+										commands.entity(parent.0)					//add `collider` and `sensor` components to the entity
+										.insert(Sensor(false))
+										.insert(collider.clone());
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}	
 }

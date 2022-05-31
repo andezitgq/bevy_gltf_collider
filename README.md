@@ -1,8 +1,17 @@
 # GLTF scene collider example (bevy_rapier3d)
 
-The code is licensed under Apache license
+**A conception of the example was changed.** All components are unified for comfortable use. Each Entity of the loaded scene has the following structure:
 
-La kodo estas licencita sub Apache-permesilo
+* Parent
+	* Transform
+	* GltfExtras
+
+* Child
+	* Handle<Mesh>
+	
+To add a collider to a Mesh of the scene, it must have extras `collider = true`
+
+`The whole code is licensed under Apache 2.0 license`
 
 ## Dependencies
 
