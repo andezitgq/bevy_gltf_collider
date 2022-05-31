@@ -128,7 +128,10 @@ fn control_extras(
 									if v["collider"].as_str() == Some("true") {		//check whether property "collider" is true
 										commands.entity(parent.0)					//add `collider` and `sensor` components to the entity
 										.insert(Sensor(false))
-										.insert(collider.clone());
+										.insert(collider.clone())
+										.insert(Ccd::enabled())						//add collision events
+										.insert(ActiveCollisionTypes::default())
+										.insert(ActiveEvents::COLLISION_EVENTS);
 									}
 								}
 							}
