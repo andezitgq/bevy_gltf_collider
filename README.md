@@ -17,3 +17,4 @@ To add a collider to a Mesh of the scene, it must have extras `collider = true`
 
 	bevy = "0.7"
 	bevy_rapier3d = "0.13.2", features=["debug-render"]
+	serde_json = "1.0"
