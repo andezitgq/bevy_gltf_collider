@@ -121,7 +121,7 @@ fn control_extras(
 			for loaded_mesh in loaded_meshes.0.iter() {								//iterate loaded meshes
 				if loaded_mesh == mesh {											//check if meshes of `LoadedMeshes` and `Entity` are equal
 					if let Some(mesh) = assets_mesh.get(mesh) {						//get `Mesh` from `Handle`
-						if let Some(collider) = Collider::bevy_mesh(mesh) {			//make `Collider` for `Mesh`
+						if let Some(collider) = Collider::from_bevy_mesh(mesh, &ComputedColliderShape::TriMesh) {	//make `Collider` for `Mesh`
 							for (exent, _t, gltf_extras) in q_parent.iter() {		//iterate "parent object" with `GltfExtras`
 								if exent == parent.0 {								//check if parents matches
 									let v: Value = serde_json::from_str(&gltf_extras.value).expect("Couldn't parse GltfExtra value as JSON");

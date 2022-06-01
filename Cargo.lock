@@ -543,9 +543,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_rapier3d"
-version = "0.13.2"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf91c1d5cbddaec454a227d32eb9151705ebc23cf3ecd30874eed71cf5d9e663"
+checksum = "cb6a83c09dfeb6c614168388bd2944202b08ad86324554e684337035f787d982"
 dependencies = [
  "bevy",
  "bitflags",
@@ -2607,9 +2607,9 @@ checksum = "63e935c45e09cc6dcf00d2f0b2d630a58f4095320223d47fc68918722f0538b6"
 
 [[package]]
 name = "rapier3d"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "652dc538f3b0b0c1ba75aa3f4bdcac8d5132630bce22efd54a7240bdac33108d"
+checksum = "3de4a0087979f2c5c856bd7121b1cd295930cbbadf16b00f814f10cbf53bb02f"
 dependencies = [
  "approx",
  "arrayvec",
@@ -2617,7 +2617,6 @@ dependencies = [
  "bitflags",
  "crossbeam",
  "downcast-rs",
- "instant",
  "nalgebra",
  "num-derive",
  "num-traits",
